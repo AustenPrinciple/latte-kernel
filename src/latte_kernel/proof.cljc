@@ -55,7 +55,7 @@
 (defn elab-have [def-env ctx var-deps def-uses name ty term meta]
   ;;(println "  => have step: " name)
   (let [[status res] (elab-have-impl def-env ctx var-deps def-uses name ty term meta)]
-   [status res]))
+    [status res]))
 
 (defn elab-have-impl [def-env ctx var-deps def-uses name ty term meta]
   ;;(println "  => have step: " name)
@@ -66,24 +66,25 @@
             :from term-type
             :meta meta}]
       ;; we have the type here
-      (let [[status, rec-ty] (if (= ty '_)
-                               [:ok term-type]
-                               (let [[status, have-type] (typing/rebuild-type def-env ctx ty)]
-                                 (cond
-                                   (= status :ko)
-                                   [:ko {:msg "Have step elaboration failed: cannot rebuild have-type."
-                                         :have-name name
-                                         :have-type ty
-                                         :error have-type}]
-                                   (not (norm/beta-eq? def-env ctx term-type have-type))
-                                   [:ko {:msg "Have step elaboration failed: synthetized term type and expected type do not match"
-                                         :have-name name
-                                         :expected-type have-type ;; or ty ?
-                                         :synthetized-type term-type
-                                         :meta meta}]
-                                   :else
-                                   ;;[:ok term-type] ;; XXX: the have-type is mode "declarative" (?)
-                                   [:ok have-type])))] ;; largely faster in bad cases !
+      (let [[status, rec-ty] 
+            (if (= ty '_)
+              [:ok term-type]
+              (let [[status, have-type] (typing/rebuild-type def-env ctx ty)]
+                (cond
+                  (= status :ko)
+                  [:ko {:msg "Have step elaboration failed: cannot rebuild have-type."
+                        :have-name name
+                        :have-type ty
+                        :error have-type}]
+                  (not (norm/beta-eq? def-env ctx term-type have-type))
+                  [:ko {:msg "Have step elaboration failed: synthetized term type and expected type do not match"
+                        :have-name name
+                        :expected-type have-type ;; or ty ?
+                        :synthetized-type term-type
+                        :meta meta}]
+                  :else
+                  ;;[:ok term-type] ;; XXX: the have-type is mode "declarative" (?)
+                  [:ok have-type])))] ;; largely faster in bad cases !
         (if (= status :ko)
           [:ko (assoc rec-ty :meta meta)]
           (if (= name '_)
@@ -96,10 +97,10 @@
                     var-deps' (-> var-deps
                                   ;; (update-var-deps name term)
                                   (update-var-deps name rec-ty))
-                    def-uses'(-> def-uses
-                                 (update-def-uses name term)
-                                 (update-def-uses name rec-ty)
-                                 (assoc name #{}))]
+                    def-uses' (-> def-uses
+                                  (update-def-uses name term)
+                                  (update-def-uses name rec-ty)
+                                  (assoc name #{}))]
                 [:ok [def-env' ctx var-deps' def-uses']]))))))))
 
 (defn update-var-deps [var-deps name term]
@@ -293,7 +294,7 @@
   (println "local definitions:")
   (doseq [[name ddef] (defenv/local-definitions def-env)]
     (println name (str "(" (show-deftype ddef) "):") (show-def ddef meta)))
- (println "============================"))
+  (println "============================"))
 
 ;;{
 ;; ## Proof elabortation
@@ -391,12 +392,12 @@
             [:cont [def-env ctx var-deps def-uses]])))
     :print-def
     (let [[name meta] args]
-      (do (elab-print-def def-env name meta)
-          [:cont [def-env ctx var-deps def-uses]]))
+      (elab-print-def def-env name meta)
+      [:cont [def-env ctx var-deps def-uses]])
     :print-defenv
     (let [[meta] args]
-      (do (elab-print-defenv def-env meta)
-          [:cont [def-env ctx var-deps def-uses]]))
+      (elab-print-defenv def-env meta)
+      [:cont [def-env ctx var-deps def-uses]])
     ;; else
     (throw (ex-info "Unknown step kind in proof script."
                     {:step step
@@ -471,11 +472,11 @@
         [status res] (elab-proof def-env ctx proof)]
     (if (= status :ko)
       [status res]
-      (let [[def-env' proof-term proof-type] res]
-        (let [[status thm-type'] (typing/rebuild-type def-env' ctx thm-type)]
-          (if (= status :ko)
-            (throw (ex-info "Cannot rebuild theorem type." {:thm-type thm-type
-                                                            :error thm-type'})))
+      (let [[def-env' proof-term proof-type] res
+            [status thm-type'] (typing/rebuild-type def-env' ctx thm-type)]
+        (if (= status :ko)
+          (throw (ex-info "Cannot rebuild theorem type." {:thm-type thm-type
+                                                          :error thm-type'}))
           (if (not (norm/beta-eq? def-env' ctx proof-type thm-type'))
             [:ko {:msg "Theorem type and proof type do not match."
                   :thm-type thm-type'

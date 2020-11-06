@@ -2,6 +2,7 @@
   (:require #?(:clj [clojure.test :refer :all]
                :cljs [cljs.test :as t :refer-macros [is deftest testing]])
             [latte-kernel.defenv :as defenv]
+            [latte-kernel.syntax :as stx]
             [latte-kernel.norm :refer :all]))
 
 (deftest test-beta-reduction
@@ -15,7 +16,7 @@
   (is (= (beta-red '[[(λ [x ✳] x) y] z])
          '[y z]))
 
-  (is (= (beta-red '(λ [y [(λ [x □] x) ✳]] y))
+  (is (= (stx/readable-term (beta-red '(λ [y [(λ [x □] x) ✳]] y)))
          '(λ [y ✳] y)))
 
   (is (= (beta-red '[z [(λ [x ✳] x) y]])
@@ -119,8 +120,24 @@
          '[[y (test [t t] u)] 0])))
 
 (deftest test-normalize
-  (is (= (normalize '(λ [y [(λ [x □] x) ✳]] [(λ [x ✳] x) y]))
-         '(λ [y ✳] y))))
+  (is (= (stx/readable-term (normalize '(λ [y [(λ [x □] x) ✳]] [(λ [x ✳] x) y])))
+         '(λ [y ✳] y)))
+
+  (is (= (stx/readable-term (normalize (defenv/mkenv {'app (defenv/map->Definition
+                                 '{:arity 2
+                                   :tag :definition
+                                   :params [[a ✳] [f (Π [b ✳] ✳)]]
+                                   :parsed-term [f a]
+                                   :opts {:opaque false}})
+                          'const (defenv/map->Definition
+                                   '{:arity 1
+                                     :tag :definition
+                                     :params [[x ✳]]
+                                     :parsed-term (λ [y ✳] x)
+                                     :opts {:opaque false}})})
+                                       '(λ [y ✳] (λ [g (Π [z ✳] ✳)] (const (app g y))))))
+         '(λ [y ✳] (λ [g (Π [z ✳] ✳)] (λ [y' ✳] [y g]))))))
+
 
 (deftest test-beta-eq?
   (is (beta-eq? '(λ [z ✳] z)
